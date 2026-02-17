@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       fechaEmision: new Date(),
     });
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
