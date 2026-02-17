@@ -5,7 +5,8 @@ import { ProductosTable } from "@/components/features/productos-table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Producto } from "@/types";
-import { RefreshCw, Package } from "lucide-react";
+import Link from "next/link";
+import { RefreshCw, Package, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { ProductoFormData } from "@/components/features/producto-form-dialog";
 
@@ -127,6 +128,12 @@ export default function ProductosPage() {
             Catálogo de productos capturados desde e-commerce con la extensión Chrome
           </p>
         </div>
+        <Button variant="outline" asChild>
+          <Link href="/dashboard/pdf">
+            <FileText className="mr-2 h-4 w-4" />
+            Generar PDF
+          </Link>
+        </Button>
         <Button variant="outline" onClick={fetchProductos} disabled={loading}>
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           Actualizar

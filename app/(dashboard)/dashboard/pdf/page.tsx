@@ -196,6 +196,9 @@ export default function PdfPage() {
             Crea una cotización en PDF sin vincularla a una licitación. Agrega items manualmente o desde el catálogo de productos.
           </p>
         </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/dashboard/productos">Ver Productos</Link>
+        </Button>
         <Button variant="outline" size="sm" onClick={fetchProductos} disabled={loadingProductos}>
           <RefreshCw className={`mr-2 h-4 w-4 ${loadingProductos ? "animate-spin" : ""}`} />
           Actualizar productos
@@ -375,11 +378,7 @@ export default function PdfPage() {
         <CardHeader>
           <CardTitle>Configuración y generar</CardTitle>
           <CardDescription>
-            Días de entrega y validez. Los datos de empresa se toman de{" "}
-            <Link href="/dashboard/configuracion" className="text-primary underline">
-              Configuración
-            </Link>
-            .
+            Días de entrega y validez. Los datos de empresa se guardan automáticamente.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -3,15 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Home, Package, Settings, FlaskConical, FileText } from "lucide-react";
+import { Package, FileText } from "lucide-react";
 import { ErrorBoundary } from "@/components/error-boundary";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/dashboard/productos", label: "Productos", icon: Package },
-  { href: "/dashboard/pdf", label: "Pdf", icon: FileText },
-  { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
-  { href: "/testing", label: "Testing API", icon: FlaskConical },
+  { href: "/dashboard/pdf", label: "Generar PDF", icon: FileText },
 ];
 
 export default function DashboardLayout({
@@ -27,12 +24,12 @@ export default function DashboardLayout({
         {/* Sidebar */}
         <aside className="w-64 flex-shrink-0 border-r bg-white" style={{ borderColor: "hsl(var(--border))" }}>
           <div className="flex flex-col h-full">
-            <Link href="/dashboard" className="flex items-center justify-center px-6 py-5 border-b" style={{ borderColor: "hsl(var(--border))" }}>
+            <Link href="/dashboard/productos" className="flex items-center justify-center px-6 py-5 border-b" style={{ borderColor: "hsl(var(--border))" }}>
               <Image src="/img/logopng.png" alt="LicitIA" width={220} height={220} className="object-contain" />
             </Link>
             <nav className="flex-1 p-3 space-y-1">
               {navItems.map(({ href, label, icon: Icon }) => {
-                const isActive = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+                const isActive = pathname === href || pathname.startsWith(href);
                 return (
                   <Link
                     key={href}
