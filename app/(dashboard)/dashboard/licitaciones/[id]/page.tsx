@@ -156,6 +156,7 @@ export default function LicitacionDetailPage() {
   };
 
   const handleGenerarPDF = async () => {
+    if (!licitacion) return;
     if (!items.length) {
       toast({
         title: "Sin items",
