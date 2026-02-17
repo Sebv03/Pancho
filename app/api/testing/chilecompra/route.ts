@@ -162,31 +162,36 @@ export async function GET(request: NextRequest) {
       const listado = filtrarPorTipo(listadoCompleto, tipo);
 
       const toEnrich = listado.slice(0, ENRICH_LIMIT);
-      const enriched: ChileCompraLicitacion[] = [];
+      const enriched: (ChileCompraLicitacion & { _origen?: string })[] = [];
+      const normalize = (l: Record<string, unknown>): ChileCompraLicitacion & { _origen?: string } => ({
+        CodigoExterno: String(l.CodigoExterno ?? ""),
+        Nombre: String(l.Nombre ?? ""),
+        ...l,
+      } as ChileCompraLicitacion & { _origen?: string });
       for (let i = 0; i < toEnrich.length; i++) {
         if (i > 0) await new Promise((r) => setTimeout(r, DELAY_MS));
-        const lic = toEnrich[i];
+        const lic = toEnrich[i] as Record<string, unknown>;
         const codigo = lic.CodigoExterno;
         if (!codigo) {
-          enriched.push(lic);
+          enriched.push(normalize(lic));
           continue;
         }
         try {
-          const detalle = await service.obtenerDetalleLicitacion(codigo);
+          const detalle = await service.obtenerDetalleLicitacion(String(codigo));
           enriched.push(
             detalle
-              ? {
+              ? normalize({
                   ...lic,
                   Comprador: detalle.Comprador ?? lic.Comprador,
                   MontoEstimado: detalle.MontoEstimado ?? lic.MontoEstimado,
-                }
-              : lic
+                })
+              : normalize(lic)
           );
         } catch {
-          enriched.push(lic);
+          enriched.push(normalize(lic));
         }
       }
-      licitaciones = [...enriched, ...listado.slice(ENRICH_LIMIT)];
+      licitaciones = [...enriched, ...listado.slice(ENRICH_LIMIT).map((l) => normalize(l as Record<string, unknown>))];
     }
 
     return NextResponse.json({
