@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Albaterra - Capturador Universal de Productos",
+  "version": "1.0.0",
+  "description": "Captura productos de cualquier e-commerce para tu CRM de licitaciones",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://*.vercel.app/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["LOGOWH.png"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
