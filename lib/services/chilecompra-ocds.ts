@@ -91,8 +91,8 @@ export function normalizarRecordOCDS(record: OCDSRecord): OCDSRecordNormalizado 
     Comprador: buyer
       ? {
           NombreOrganismo: String(buyer.name ?? ""),
-          RegionUnidad: (buyer as Record<string, unknown>).address?.region as string | undefined,
-          ComunaUnidad: (buyer as Record<string, unknown>).address?.locality as string | undefined,
+          RegionUnidad: (buyer.address as { region?: string } | undefined)?.region,
+          ComunaUnidad: (buyer.address as { locality?: string } | undefined)?.locality,
         }
       : undefined,
     MontoEstimado: amount,
