@@ -5,7 +5,7 @@ Solo necesitas **Google Chrome**. No hace falta Node.js, npm ni ningún programa
 > **Importante:** La extensión envía los productos a una app (servidor). Hay dos formas de que funcione:
 >
 > - **App desplegada** (Vercel, etc.): La app está en internet. Nadie necesita tener nada corriendo en su PC.
-> - **App en local**: Alguien debe tener el servidor corriendo (`npm run dev`). La extensión apunta a `http://localhost:3000`. Solo funciona en la misma PC donde corre el servidor.
+> - **App en local**: Alguien debe tener el servidor corriendo. Solo necesitas **Node.js** y ejecutar `iniciar-local.bat` (o `npm run dev`). Ver [INSTALACION_LOCAL.md](../INSTALACION_LOCAL.md).
 
 ## Paso 1: Obtener la extensión
 

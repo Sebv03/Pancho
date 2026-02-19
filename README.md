@@ -40,6 +40,7 @@ Ejecuta las migraciones SQL en Supabase (en orden):
 npm install
 npm run dev
 ```
+O en Windows: doble clic en **`iniciar-local.bat`** (ver [INSTALACION_LOCAL.md](INSTALACION_LOCAL.md))
 
 ### Paso 3: Extensión Chrome
 1. Ve a `chrome://extensions/`
