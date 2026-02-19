@@ -2,6 +2,11 @@
 
 Solo necesitas **Google Chrome**. No hace falta Node.js, npm ni ningún programa adicional.
 
+> **Importante:** La extensión envía los productos a una app (servidor). Hay dos formas de que funcione:
+>
+> - **App desplegada** (Vercel, etc.): La app está en internet. Nadie necesita tener nada corriendo en su PC.
+> - **App en local**: Alguien debe tener el servidor corriendo (`npm run dev`). La extensión apunta a `http://localhost:3000`. Solo funciona en la misma PC donde corre el servidor.
+
 ## Paso 1: Obtener la extensión
 
 **Opción A – Desde GitHub (recomendado)**  
@@ -28,7 +33,9 @@ Solo necesitas **Google Chrome**. No hace falta Node.js, npm ni ningún programa
 
 1. Haz clic en el ícono de la extensión (Albaterra)  
 2. Completa:
-   - **URL de tu CRM**: la URL de la app desplegada (ej: `https://tu-app.vercel.app`)
+   - **URL de tu CRM**: 
+     - Si la app está desplegada: `https://tu-app.vercel.app`
+     - Si corre en tu PC: `http://localhost:3000` (el servidor debe estar corriendo con `npm run dev`)
    - **API Key**: la clave que te haya dado el administrador (ej: `licitia-dev-key-2024`)
 3. Haz clic en **Guardar configuración**  
 
@@ -44,7 +51,9 @@ Solo necesitas **Google Chrome**. No hace falta Node.js, npm ni ningún programa
 ## Requisitos
 
 - **Google Chrome** (última versión recomendada)  
-- La app LicitIA desplegada en internet (Vercel, etc.)  
+- **La app debe estar accesible** de una de estas formas:
+  - Desplegada en internet (Vercel, etc.), o
+  - Corriendo en local (`npm run dev`) en la misma PC donde usas la extensión
 - URL y API Key proporcionadas por el administrador  
 
 ## Problemas frecuentes
@@ -55,7 +64,8 @@ Solo necesitas **Google Chrome**. No hace falta Node.js, npm ni ningún programa
 
 **Error al guardar**  
 - Revisa que la URL y la API Key sean correctas  
-- Comprueba que la app esté desplegada y accesible  
+- Si usas localhost: comprueba que el servidor esté corriendo (`npm run dev`)  
+- Si usas una URL desplegada: comprueba que la app esté accesible en internet  
 
 **La extensión no se carga**  
 - Asegúrate de haber seleccionado la carpeta correcta (la que contiene `manifest.json`)  
