@@ -31,6 +31,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# extension zip (generado con npm run extension:zip)
+albaterra-extension.zip
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

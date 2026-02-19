@@ -15,6 +15,8 @@ Capturador universal de productos para tu CRM de licitaciones.
 
 ## 📦 Instalación
 
+> **¿No tienes Node.js ni nada instalado?** Lee [INSTALACION_SIN_NADA.md](./INSTALACION_SIN_NADA.md) — solo necesitas Chrome.
+
 ### 1. Cargar extensión en Chrome
 
 1. Abre Chrome y ve a `chrome://extensions/`

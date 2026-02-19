@@ -22,7 +22,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Mostrar notificación
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: 'icons/icon48.png',
+      iconUrl: 'icon48.png',
       title: 'Producto Capturado',
       message: `${request.data.nombre} agregado a Albaterra`,
     });

@@ -8,10 +8,10 @@
     "48": "icon48.png",
     "128": "icon128.png"
   },
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["activeTab", "storage","notifications"],
   "host_permissions": [
     "http://localhost:3000/*",
-    "https://*.vercel.app/*"
+    "https://*.vercel.app/*","https://*.onrender.com/*","https://*.railway.app/*","https://*.netlify.app/*"
   ],
   "action": {
     "default_popup": "popup.html",

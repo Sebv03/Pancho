@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "extension:zip": "powershell -ExecutionPolicy Bypass -File ./scripts/crear-zip-extension.ps1",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
