@@ -39,7 +39,7 @@ class UniversalProductExtractor {
       },
       'distribuidoranico.cl': {
         title: ['h1', '.product_title', '[class*="product-title"]', '[class*="product-name"]', '.entry-title'],
-        price: ['.price ins .woocommerce-Price-amount bdi', '.price ins .amount', '.price .woocommerce-Price-amount bdi', '.price .amount', 'p.price bdi', 'p.price .amount', '.summary .price', '[itemprop="price"]', '.single-product .price'],
+        price: ['.summary .price bdi', '.summary .price .amount', '.price ins bdi', '.price ins .amount', '.price bdi', '.price .woocommerce-Price-amount', '.price .amount', 'p.price bdi', 'p.price', '.summary .price', '[itemprop="price"]'],
         image: ['.woocommerce-product-gallery img', '.product img', '[class*="gallery"] img', 'img.attachment-woocommerce_single'],
       },
     };
@@ -52,6 +52,8 @@ class UniversalProductExtractor {
 
     let precio = this.extractPrice(this.getFirstMatch(config.price, (el) => el.textContent, main));
     if (!precio) precio = this.extractPriceFromWooCommerce(main);
+    if (!precio) precio = this.extractPriceFromProductSummary(main);
+    if (!precio) precio = this.extractPriceFirstInDOM(main);
     if (!precio) precio = this.extractPriceFromPage(main);
 
     let imgEl = null;
@@ -66,6 +68,13 @@ class UniversalProductExtractor {
     }
     const imagen = imgEl ? this.resolveImageUrl(imgEl) : null;
 
+    if (!precio || precio === 0) {
+      const productBlock = main.querySelector?.('.product, .single-product, [class*="product-detail"]') || main;
+      precio = this.extractPriceFromPage(productBlock);
+    }
+    if (!precio || precio === 0) {
+      precio = this.extractPriceFromSchema();
+    }
     return {
       nombre,
       descripcion: this.getFirstMatch(['[class*="description"]', '[class*="descripcion"]', '[itemprop="description"]'], (el) => el.textContent?.trim().slice(0, 500), main) || '',
@@ -101,6 +110,21 @@ class UniversalProductExtractor {
       }
     }
     return el.src || null;
+  }
+
+  extractPriceFromSchema() {
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    for (const script of scripts) {
+      try {
+        const data = JSON.parse(script.textContent);
+        const product = this.findProductInSchema(data);
+        if (product) {
+          const p = this.extractPrice(product.offers?.price || product.offers?.lowPrice || product.price);
+          if (p && p > 0) return p;
+        }
+      } catch (e) {}
+    }
+    return null;
   }
 
   extractFromSchemaOrg() {
@@ -375,6 +399,7 @@ class UniversalProductExtractor {
       '[class*="item-detail"]', '[class*="articulo"]',
       '.single-product', '.product', '[class*="producto"]',
       '#product', '[class*="product-content"]',
+      '.type-product', '.product.type-product',
     ];
     for (const sel of mainSelectors) {
       const el = document.querySelector(sel);
@@ -428,6 +453,40 @@ class UniversalProductExtractor {
     return this.extractPrice(text);
   }
 
+  /** Busca precio en el área del producto principal (summary) - evita precios de productos relacionados */
+  extractPriceFromProductSummary(root = document.body) {
+    const summarySelectors = ['.summary', '.product-summary', '.product .summary', '.woocommerce-product-details__short-description', '[class*="product-details"]', '.single-product .summary', '.product', '.product-details', '[class*="single-product"]'];
+    const pricePatterns = [
+      /\$\s*([\d.,\s]+)/,
+      /([\d]{1,3}(?:[.\s]\d{3})*(?:,\d+)?)\s*CLP/i,
+      /precio[:\s]*\$?\s*([\d.,\s]+)/i,
+      /valor[:\s]*\$?\s*([\d.,\s]+)/i,
+      /([\d]{1,3}(?:\.\d{3})+(?:,\d+)?)/,
+      /([\d]{2,}\s*[\d]{3})/,
+    ];
+    for (const sel of summarySelectors) {
+      const summary = root.querySelector?.(sel);
+      if (!summary) continue;
+      const text = (summary.innerText || summary.textContent || '').replace(/\s+/g, ' ');
+      for (const pattern of pricePatterns) {
+        const match = text.match(pattern);
+        if (match) {
+          const num = this.extractPrice(match[1] || match[0]);
+          if (num && num > 0 && num < 50000000) return num;
+        }
+      }
+      const priceEls = summary.querySelectorAll?.('.price, [class*="price"], [itemprop="price"], bdi, .amount');
+      for (const el of priceEls || []) {
+        const txt = el.textContent?.trim() || '';
+        if (txt.length > 0 && txt.length < 20 && /[\d]/.test(txt)) {
+          const num = this.extractPrice(txt);
+          if (num && num > 0) return num;
+        }
+      }
+    }
+    return null;
+  }
+
   extractPrice(priceString) {
     if (!priceString) return null;
     let cleaned = String(priceString).replace(/\s/g, '').replace(/[^\d,.]/g, '');
@@ -449,14 +508,15 @@ class UniversalProductExtractor {
     const pricePatterns = [
       /\$\s*([\d.,\s]+)/g,
       /(\d{1,3}(?:[.\s]\d{3})*(?:,\d+)?)\s*CLP/gi,
-      /precio[:\s]*\$?\s*([\d.,]+)/gi,
-      /valor[:\s]*\$?\s*([\d.,]+)/gi,
-      /precio\s+actual[:\s]*\$?\s*([\d.,]+)/gi,
-      /precio\s+internet[:\s]*\$?\s*([\d.,]+)/gi,
+      /precio[:\s]*\$?\s*([\d.,\s]+)/gi,
+      /valor[:\s]*\$?\s*([\d.,\s]+)/gi,
+      /precio\s+actual[:\s]*\$?\s*([\d.,\s]+)/gi,
+      /precio\s+internet[:\s]*\$?\s*([\d.,\s]+)/gi,
       /data-price=["']([\d.,]+)["']/gi,
       /data-value=["']([\d.,]+)["']/gi,
       /data-precio=["']([\d.,]+)["']/gi,
       /content=["']([\d.,]+)["'][^>]*itemprop=["']price["']/gi,
+      /(?:precio|valor|total)[:\s]*([\d]{1,3}(?:[.\s]\d{3})*(?:,\d+)?)/gi,
     ];
 
     const prices = new Set();
@@ -484,6 +544,19 @@ class UniversalProductExtractor {
     if (prices.size === 0) return null;
     const sorted = [...prices].sort((a, b) => a - b);
     return sorted[0];
+  }
+
+  /** Obtiene el primer precio válido en orden DOM (útil cuando el principal está antes que productos relacionados) */
+  extractPriceFirstInDOM(root = document.body) {
+    const priceSelectors = ['.price ins .woocommerce-Price-amount', '.price ins .amount', '.price .woocommerce-Price-amount', '.price .amount', 'p.price', '.summary .price', '[class*="price"]', '[itemprop="price"]'];
+    for (const sel of priceSelectors) {
+      const els = root.querySelectorAll?.(sel) || [];
+      for (const el of els) {
+        const num = this.extractPrice(el.textContent);
+        if (num && num > 0 && num < 50000000) return num;
+      }
+    }
+    return null;
   }
 
   getSiteName() {
