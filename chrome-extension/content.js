@@ -7,12 +7,94 @@ class UniversalProductExtractor {
   constructor() {
     this.extractedData = null;
     this.strategies = [
+      this.extractFromSiteSpecific.bind(this),
       this.extractFromSchemaOrg.bind(this),
       this.extractFromCommonSelectors.bind(this),
       this.extractFromMicrodata.bind(this),
       this.extractFromOpenGraph.bind(this),
       this.extractFromFallback.bind(this),
     ];
+  }
+
+  /** Selectores específicos para sitios chilenos problemáticos */
+  extractFromSiteSpecific() {
+    const host = window.location.hostname.replace('www.', '');
+    const main = this.getMainContent();
+
+    const siteConfig = {
+      'lider.cl': {
+        title: ['h1[class*="product"], [class*="product-name"]', '[class*="ProductName"]', 'h1'],
+        price: ['[class*="price"]', '[class*="Price"]', '[data-price]', '[class*="precio"]', 'span[class*="amount"]'],
+        image: ['[class*="product-image"] img', '[class*="gallery"] img', '[class*="carousel"] img', 'img[class*="product"]', 'main img', '[class*="pdp"] img'],
+      },
+      'centralmayorista.cl': {
+        title: ['h1', '[class*="product-title"]', '[class*="product-name"]', '[class*="titulo"]'],
+        price: ['[class*="price"]', '[class*="precio"]', '[class*="valor"]', '[itemprop="price"]', '[data-price]'],
+        image: ['[class*="product"] img', '[class*="gallery"] img', '[class*="image"] img', 'img[src*="product"], img[src*="Product"]'],
+      },
+      'laoferta.cl': {
+        title: ['h1', '.product_title', '[class*="product-title"]', '[class*="product-name"]'],
+        price: ['.price', '[class*="price"]', '.amount', '[itemprop="price"]', 'ins .amount', '.woocommerce-Price-amount'],
+        image: ['.woocommerce-product-gallery img', '[class*="product"] img', 'img.attachment-woocommerce_single'],
+      },
+    };
+
+    const config = siteConfig[host];
+    if (!config) return null;
+
+    const nombre = this.getFirstMatch(config.title, (el) => el.textContent?.trim(), main, true);
+    if (!nombre || this.isLikelySiteName(nombre)) return null;
+
+    let precio = this.extractPrice(this.getFirstMatch(config.price, (el) => el.textContent, main));
+    if (!precio) precio = this.extractPriceFromPage(main);
+
+    let imgEl = null;
+    for (const sel of config.image) {
+      try {
+        const el = main.querySelector(sel);
+        if (el && (el.src || el.getAttribute?.('data-src') || el.getAttribute?.('srcset'))) {
+          imgEl = el;
+          break;
+        }
+      } catch (e) {}
+    }
+    const imagen = imgEl ? this.resolveImageUrl(imgEl) : null;
+
+    return {
+      nombre,
+      descripcion: this.getFirstMatch(['[class*="description"]', '[class*="descripcion"]', '[itemprop="description"]'], (el) => el.textContent?.trim().slice(0, 500), main) || '',
+      precio: precio ?? 0,
+      imagen,
+      url: window.location.href,
+      sitio: this.getSiteName(),
+      source: 'site-specific',
+      confidence: 'high',
+    };
+  }
+
+  /** Resuelve URL de imagen (lazy-load, srcset, data-src, etc.) */
+  resolveImageUrl(el) {
+    if (!el) return null;
+    const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original', 'data-zoom-image', 'data-srcset'];
+    for (const attr of attrs) {
+      const val = el.getAttribute?.(attr);
+      if (val) {
+        const url = val.split(',')[0].trim().split(/\s+/)[0];
+        if (url && url.startsWith('http')) return url;
+        if (url && url.startsWith('//')) return 'https:' + url;
+        if (url && url.startsWith('/')) return window.location.origin + url;
+      }
+    }
+    const srcset = el.getAttribute?.('srcset');
+    if (srcset) {
+      const first = srcset.split(',')[0]?.trim().split(/\s+/)[0];
+      if (first) {
+        if (first.startsWith('http')) return first;
+        if (first.startsWith('//')) return 'https:' + first;
+        if (first.startsWith('/')) return window.location.origin + first;
+      }
+    }
+    return el.src || null;
   }
 
   extractFromSchemaOrg() {
@@ -25,11 +107,13 @@ class UniversalProductExtractor {
         if (product) {
           let precio = this.extractPrice(product.offers?.price || product.offers?.lowPrice || product.price);
           if (!precio) precio = this.extractPriceFromPage(this.getMainContent());
+          let imagen = product.image?.url || product.image || (Array.isArray(product.image) ? product.image[0] : null);
+          if (imagen && !imagen.startsWith('http')) imagen = new URL(imagen, window.location.href).href;
           return {
             nombre: product.name,
             descripcion: product.description || '',
             precio: precio ?? 0,
-            imagen: product.image?.url || product.image || (Array.isArray(product.image) ? product.image[0] : null),
+            imagen,
             sku: product.sku,
             marca: product.brand?.name || product.brand,
             categoria: product.category,
@@ -107,11 +191,14 @@ class UniversalProductExtractor {
     let precio = this.extractPrice(ogPrice);
     if (!precio) precio = this.extractPriceFromPage(this.getMainContent());
 
+    let ogImage = this.getMetaContent('og:image');
+    if (ogImage && !ogImage.startsWith('http')) ogImage = new URL(ogImage, window.location.href).href;
+
     return {
       nombre: ogTitle,
       descripcion: this.isLikelySiteName(ogDesc) ? '' : (ogDesc || ''),
       precio: precio ?? 0,
-      imagen: this.getMetaContent('og:image'),
+      imagen: ogImage || null,
       url: window.location.href,
       sitio: this.getSiteName(),
       source: 'open-graph',
@@ -126,11 +213,14 @@ class UniversalProductExtractor {
     let precio = this.extractPrice(this.getItemprop(itemScope, 'price'));
     if (!precio) precio = this.extractPriceFromPage(this.getMainContent());
 
+    const imgEl = itemScope.querySelector('[itemprop="image"]');
+    const imagen = imgEl ? (imgEl.src ? imgEl.src : this.resolveImageUrl(imgEl)) : this.getItemprop(itemScope, 'image');
+
     return {
       nombre: this.getItemprop(itemScope, 'name'),
       descripcion: this.getItemprop(itemScope, 'description'),
       precio: precio ?? 0,
-      imagen: this.getItemprop(itemScope, 'image'),
+      imagen: imagen || null,
       sku: this.getItemprop(itemScope, 'sku'),
       marca: this.getItemprop(itemScope, 'brand'),
       url: window.location.href,
@@ -151,20 +241,32 @@ class UniversalProductExtractor {
     const priceSelectors = [
       '[class*="price"] [class*="current"]', '[class*="price-current"]', '[class*="price-now"]',
       '[class*="price-sale"]', '[class*="precio"]', '[class*="Precio"]',
-      '[itemprop="price"]', '[data-testid*="price"]', '[data-price]',
+      '[itemprop="price"]', '[data-testid*="price"]', '[data-price]', '[data-precio]',
       '[class*="price"]', '[class*="Price"]', '[class*="value"]',
       'span[class*="amount"]', '[class*="valor"]', '[class*="Valor"]',
+      '.woocommerce-Price-amount', '.price .amount', 'ins .amount',
     ];
     const imageSelectors = [
-      '[class*="product-image"] img', '[class*="main-image"]', '[itemprop="image"]',
+      '[class*="product-image"] img', '[class*="main-image"] img', '[itemprop="image"]',
       'img[class*="product"]', '[class*="gallery"] img', 'img[class*="Product"]',
+      '[class*="carousel"] img', '[class*="pdp"] img', 'main img[src]',
     ];
 
     const main = this.getMainContent();
     const nombre = this.getFirstMatch(titleSelectors, (el) => el.textContent?.trim(), main, true);
     let precio = this.extractPrice(this.getFirstMatch(priceSelectors, (el) => el.textContent, main));
     if (!precio) precio = this.extractPriceFromPage(main);
-    const imagen = this.getFirstMatch(imageSelectors, (el) => el.src || el.dataset.src, main);
+    let imgEl = null;
+    for (const sel of imageSelectors) {
+      try {
+        const el = main.querySelector(sel);
+        if (el && (el.src || el.getAttribute?.('data-src') || el.getAttribute?.('srcset'))) {
+          imgEl = el;
+          break;
+        }
+      } catch (e) {}
+    }
+    const imagen = imgEl ? this.resolveImageUrl(imgEl) : null;
 
     const descSelectors = [
       '[class*="product-description"]', '[class*="productDescription"]',
@@ -228,7 +330,8 @@ class UniversalProductExtractor {
     }
     let precio = this.extractPrice(this.getFirstMatch(priceSelectors, (el) => el.textContent, main));
     if (!precio) precio = this.extractPriceFromPage(main);
-    const imagen = main.querySelector('img[src*="product"], img[src*="Product"], img[class*="product"], img[class*="gallery"]')?.src || document.querySelector('img[src*="product"]')?.src;
+    const imgEl = main.querySelector('img[src*="product"], img[src*="Product"], img[class*="product"], img[class*="gallery"], img[src*="lider"], img[src*="centralmayorista"], main img') || document.querySelector('img[src*="product"], img[src*="Product"]');
+    const imagen = imgEl ? this.resolveImageUrl(imgEl) : null;
 
     const descSelectors = ['[itemprop="description"]', '[class*="descripcion"]', '[class*="description"]'];
     const descripcion = this.getFirstMatch(descSelectors, (el) => el.textContent?.trim().slice(0, 500), main) || '';
@@ -264,6 +367,8 @@ class UniversalProductExtractor {
       '.product-page', '#main', '#content',
       '[class*="pdp"]', '[class*="PDP"]',
       '[class*="item-detail"]', '[class*="articulo"]',
+      '.single-product', '.product', '[class*="producto"]',
+      '#product', '[class*="product-content"]',
     ];
     for (const sel of mainSelectors) {
       const el = document.querySelector(sel);
@@ -332,8 +437,12 @@ class UniversalProductExtractor {
       /(\d{1,3}(?:\.\d{3})*(?:,\d+)?)\s*CLP/gi,
       /precio[:\s]*\$?\s*([\d.,]+)/gi,
       /valor[:\s]*\$?\s*([\d.,]+)/gi,
+      /precio\s+actual[:\s]*\$?\s*([\d.,]+)/gi,
+      /precio\s+internet[:\s]*\$?\s*([\d.,]+)/gi,
       /data-price=["']([\d.,]+)["']/gi,
       /data-value=["']([\d.,]+)["']/gi,
+      /data-precio=["']([\d.,]+)["']/gi,
+      /content=["']([\d.,]+)["'][^>]*itemprop=["']price["']/gi,
     ];
 
     const prices = new Set();
@@ -455,7 +564,13 @@ class UIInjector {
     btn.classList.add('loading');
     btn.disabled = true;
     
-    const productData = this.extractor.extract();
+    let productData = this.extractor.extract();
+    
+    // Reintentar tras 1.5s si falló precio/imagen (SPA pueden cargar tarde)
+    if (productData && (!productData.precio || productData.precio === 0) && !productData.imagen) {
+      await new Promise(r => setTimeout(r, 1500));
+      productData = this.extractor.extract();
+    }
     
     if (!productData) {
       this.showToast('❌ No se pudo detectar el producto', 'error');
