@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 import { ImageUp, Loader2, Plus } from "lucide-react";
 
 function parsePrice(text: string): number | null {
@@ -43,6 +44,7 @@ export default function ExtraerImagenPage() {
   const [texto, setTexto] = useState("");
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
+  const [sitio, setSitio] = useState("");
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -120,7 +122,7 @@ export default function ExtraerImagenPage() {
           precio_capturado: p,
           precio_venta: p,
           url_origen: `ocr-imagen-${Date.now()}`,
-          sitio_origen: "OCR",
+          sitio_origen: sitio.trim() || "OCR",
           imagen_url: null,
           sku: null,
           marca: null,
@@ -129,7 +131,17 @@ export default function ExtraerImagenPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast({ title: "Producto agregado", description: "Se guardó en el catálogo." });
+        toast({
+          title: "Producto agregado al catálogo",
+          description: (
+            <span>
+              &quot;{n}&quot; se guardó correctamente.{" "}
+              <Link href="/dashboard/productos" className="underline font-medium">
+                Ver en Productos
+              </Link>
+            </span>
+          ),
+        });
       } else {
         throw new Error(data.error || "Error al guardar");
       }
@@ -220,6 +232,15 @@ export default function ExtraerImagenPage() {
                 value={precio}
                 onChange={(e) => setPrecio(e.target.value)}
                 placeholder="ej: 1891"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sitio">Sitio de origen</Label>
+              <Input
+                id="sitio"
+                value={sitio}
+                onChange={(e) => setSitio(e.target.value)}
+                placeholder="ej: confiterialamundial.cl"
               />
             </div>
             {(nombre || precio) && (
