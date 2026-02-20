@@ -1,7 +1,8 @@
+"use client";
 /**
  * Utilidades para exportar e importar productos en Excel
  * Formato: Imagen | Nombre | Sitio | Precio capturado | Precio Venta
- * Usa import dinámico para evitar problemas con SSR en Next.js
+ * Usa import dinámico de xlsx para evitar problemas con SSR en Next.js
  */
 
 export const EXCEL_HEADERS = ["Imagen", "Nombre", "Sitio", "Precio capturado", "Precio Venta"] as const;

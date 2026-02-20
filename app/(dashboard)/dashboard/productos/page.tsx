@@ -9,11 +9,6 @@ import Link from "next/link";
 import { RefreshCw, Package, FileText, FileDown, FileUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { ProductoFormData } from "@/components/features/producto-form-dialog";
-import {
-  exportarProductosExcel,
-  parsearExcelProductos,
-  excelRowToProductoPayload,
-} from "@/lib/utils/excel-productos";
 
 export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -129,6 +124,7 @@ export default function ProductosPage() {
         toast({ title: "Sin datos", description: "No hay productos para exportar.", variant: "destructive" });
         return;
       }
+      const { exportarProductosExcel } = await import("@/lib/utils/excel-productos");
       await exportarProductosExcel(list, `productos-${new Date().toISOString().slice(0, 10)}.xlsx`);
       toast({ title: "Exportado", description: `${list.length} productos exportados a Excel.` });
     } catch {
@@ -147,6 +143,7 @@ export default function ProductosPage() {
       return;
     }
     try {
+      const { parsearExcelProductos, excelRowToProductoPayload } = await import("@/lib/utils/excel-productos");
       const rows = await parsearExcelProductos(file);
       if (rows.length === 0) {
         toast({ title: "Sin datos válidos", description: "El Excel no tiene filas con Nombre y Precio capturado.", variant: "destructive" });
