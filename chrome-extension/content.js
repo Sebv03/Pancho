@@ -37,6 +37,11 @@ class UniversalProductExtractor {
         price: ['.price', '[class*="price"]', '.amount', '[itemprop="price"]', 'ins .amount', '.woocommerce-Price-amount'],
         image: ['.woocommerce-product-gallery img', '[class*="product"] img', 'img.attachment-woocommerce_single'],
       },
+      'distribuidoranico.cl': {
+        title: ['h1', '.product_title', '[class*="product-title"]', '[class*="product-name"]', '.entry-title'],
+        price: ['.price ins .woocommerce-Price-amount bdi', '.price ins .amount', '.price .woocommerce-Price-amount bdi', '.price .amount', 'p.price bdi', 'p.price .amount', '.summary .price', '[itemprop="price"]', '.single-product .price'],
+        image: ['.woocommerce-product-gallery img', '.product img', '[class*="gallery"] img', 'img.attachment-woocommerce_single'],
+      },
     };
 
     const config = siteConfig[host];
@@ -46,6 +51,7 @@ class UniversalProductExtractor {
     if (!nombre || this.isLikelySiteName(nombre)) return null;
 
     let precio = this.extractPrice(this.getFirstMatch(config.price, (el) => el.textContent, main));
+    if (!precio) precio = this.extractPriceFromWooCommerce(main);
     if (!precio) precio = this.extractPriceFromPage(main);
 
     let imgEl = null;
@@ -414,9 +420,17 @@ class UniversalProductExtractor {
     return null;
   }
 
+  /** Extrae precio de estructura WooCommerce: .price ins (oferta) o .price */
+  extractPriceFromWooCommerce(root = document.body) {
+    const priceEl = root.querySelector?.('.price ins .woocommerce-Price-amount, .price ins .amount, .price .woocommerce-Price-amount, .price .amount, p.price');
+    if (!priceEl) return null;
+    const text = priceEl.textContent || '';
+    return this.extractPrice(text);
+  }
+
   extractPrice(priceString) {
     if (!priceString) return null;
-    let cleaned = String(priceString).replace(/[^\d,.]/g, '');
+    let cleaned = String(priceString).replace(/\s/g, '').replace(/[^\d,.]/g, '');
     if (!cleaned) return null;
     if (cleaned.includes(',')) {
       cleaned = cleaned.replace(/\./g, '').replace(',', '.');
@@ -433,8 +447,8 @@ class UniversalProductExtractor {
    */
   extractPriceFromPage(root = document.body) {
     const pricePatterns = [
-      /\$\s*([\d.,]+)/g,
-      /(\d{1,3}(?:\.\d{3})*(?:,\d+)?)\s*CLP/gi,
+      /\$\s*([\d.,\s]+)/g,
+      /(\d{1,3}(?:[.\s]\d{3})*(?:,\d+)?)\s*CLP/gi,
       /precio[:\s]*\$?\s*([\d.,]+)/gi,
       /valor[:\s]*\$?\s*([\d.,]+)/gi,
       /precio\s+actual[:\s]*\$?\s*([\d.,]+)/gi,
