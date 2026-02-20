@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ProductosTable } from "@/components/features/productos-table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Producto } from "@/types";
 import Link from "next/link";
-import { RefreshCw, Package, FileText } from "lucide-react";
+import { RefreshCw, Package, FileText, FileDown, FileUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { ProductoFormData } from "@/components/features/producto-form-dialog";
+import {
+  exportarProductosExcel,
+  parsearExcelProductos,
+  excelRowToProductoPayload,
+} from "@/lib/utils/excel-productos";
 
 export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -115,19 +120,80 @@ export default function ProductosPage() {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const res = await fetch("/api/productos?limit=5000");
+      const data = await res.json();
+      const list = data.data || [];
+      if (list.length === 0) {
+        toast({ title: "Sin datos", description: "No hay productos para exportar.", variant: "destructive" });
+        return;
+      }
+      await exportarProductosExcel(list, `productos-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast({ title: "Exportado", description: `${list.length} productos exportados a Excel.` });
+    } catch {
+      toast({ title: "Error", description: "No se pudo exportar.", variant: "destructive" });
+    }
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+      toast({ title: "Formato inválido", description: "Usa un archivo .xlsx o .xls", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+    try {
+      const rows = await parsearExcelProductos(file);
+      if (rows.length === 0) {
+        toast({ title: "Sin datos válidos", description: "El Excel no tiene filas con Nombre y Precio capturado.", variant: "destructive" });
+        e.target.value = "";
+        return;
+      }
+      let creados = 0;
+      let errores = 0;
+      for (const row of rows) {
+        const payload = excelRowToProductoPayload(row);
+        const response = await fetch("/api/productos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (response.ok) creados++;
+        else errores++;
+      }
+      toast({
+        title: "Importación completada",
+        description: `${creados} productos agregados${errores > 0 ? `, ${errores} con error` : ""}.`,
+      });
+      fetchProductos();
+    } catch (err) {
+      toast({
+        title: "Error al importar",
+        description: err instanceof Error ? err.message : "Error desconocido",
+        variant: "destructive",
+      });
+    }
+    e.target.value = "";
+  };
+
   useEffect(() => {
     fetchProductos();
   }, []);
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex-1 min-w-0">
           <h1 className="text-3xl font-bold tracking-tight">Productos</h1>
           <p className="text-muted-foreground">
             Catálogo de productos capturados desde e-commerce con la extensión Chrome
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
         <Button variant="outline" asChild>
           <Link href="/dashboard/pdf">
             <FileText className="mr-2 h-4 w-4" />
@@ -138,6 +204,26 @@ export default function ProductosPage() {
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           Actualizar
         </Button>
+        <Button variant="outline" onClick={handleExportExcel} disabled={loading}>
+          <FileDown className="mr-2 h-4 w-4" />
+          Exportar Excel
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={loading}
+        >
+          <FileUp className="mr-2 h-4 w-4" />
+          Importar Excel
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="hidden"
+          onChange={handleImportExcel}
+        />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

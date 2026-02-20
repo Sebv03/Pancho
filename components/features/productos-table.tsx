@@ -111,7 +111,7 @@ export function ProductosTable({
           <div>
             <CardTitle>Productos</CardTitle>
             <CardDescription>
-              Catálogo de productos capturados desde e-commerce. Total: {filteredData.length}
+              Catálogo de productos capturados desde e-commerce. Total: {filteredData.length}. Formato Excel: Imagen, Nombre, Sitio, Precio capturado, Precio Venta.
             </CardDescription>
           </div>
           <Button onClick={handleAdd}>
