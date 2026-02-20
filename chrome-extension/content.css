@@ -95,3 +95,81 @@
   background: #22c55e;
   color: white;
 }
+
+.licitia-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000001;
+  align-items: center;
+  justify-content: center;
+}
+
+.licitia-modal.show {
+  display: flex;
+}
+
+.licitia-modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.licitia-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #166534;
+}
+
+.licitia-modal-desc {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 16px 0;
+}
+
+.licitia-price-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+}
+
+.licitia-modal-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.licitia-modal-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+
+.licitia-modal-btn.cancel {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.licitia-modal-btn.ok {
+  background: #22c55e;
+  color: white;
+}
+
+.licitia-modal-btn:hover {
+  opacity: 0.9;
+}

@@ -688,6 +688,17 @@ class UIInjector {
         <img src="${logoUrl}" alt="Albaterra" class="licitia-btn-img" />
       </button>
       <div id="licitia-toast" class="licitia-toast"></div>
+      <div id="licitia-price-modal" class="licitia-modal">
+        <div class="licitia-modal-content">
+          <p class="licitia-modal-title">Precio no detectado</p>
+          <p class="licitia-modal-desc">Ingresa el precio manualmente (solo números):</p>
+          <input type="text" id="licitia-price-input" placeholder="ej: 1891 o 1.891" class="licitia-price-input" />
+          <div class="licitia-modal-btns">
+            <button id="licitia-price-cancel" class="licitia-modal-btn cancel">Cancelar</button>
+            <button id="licitia-price-ok" class="licitia-modal-btn ok">Usar precio</button>
+          </div>
+        </div>
+      </div>
     `;
 
     document.body.appendChild(container);
@@ -721,6 +732,18 @@ class UIInjector {
       btn.classList.remove('loading');
       btn.disabled = false;
       return;
+    }
+
+    if (!productData.precio || productData.precio === 0) {
+      const manualPrice = await this.showPriceModal();
+      if (manualPrice !== null && manualPrice > 0) {
+        productData = { ...productData, precio: manualPrice };
+      } else if (manualPrice === null) {
+        this.showToast('Captura cancelada', 'info');
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        return;
+      }
     }
 
     try {
@@ -759,6 +782,45 @@ class UIInjector {
       toast.className = `licitia-toast ${type} show`;
       setTimeout(() => toast.classList.remove('show'), 3000);
     }
+  }
+
+  showPriceModal() {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('licitia-price-modal');
+      const input = document.getElementById('licitia-price-input');
+      if (!modal || !input) {
+        resolve(null);
+        return;
+      }
+      const parsePrice = (val) => {
+        const cleaned = String(val || '').replace(/\s/g, '').replace(/[^\d,.]/g, '');
+        if (!cleaned) return null;
+        let n = cleaned;
+        if (cleaned.includes(',')) {
+          n = cleaned.replace(/\./g, '').replace(',', '.');
+        } else if (cleaned.match(/\.\d{3}$/) || cleaned.split('.').length > 2) {
+          n = cleaned.replace(/\./g, '');
+        }
+        const num = parseFloat(n);
+        return isNaN(num) ? null : num;
+      };
+      const close = (result) => {
+        modal.classList.remove('show');
+        resolve(result);
+      };
+      modal.classList.add('show');
+      input.value = '';
+      input.focus();
+      document.getElementById('licitia-price-ok').onclick = () => {
+        const num = parsePrice(input.value);
+        close(num && num > 0 ? num : null);
+      };
+      document.getElementById('licitia-price-cancel').onclick = () => close(null);
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter') document.getElementById('licitia-price-ok').click();
+        if (e.key === 'Escape') document.getElementById('licitia-price-cancel').click();
+      };
+    });
   }
 }
 
