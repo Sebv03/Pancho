@@ -75,6 +75,12 @@ class UniversalProductExtractor {
     if (!precio || precio === 0) {
       precio = this.extractPriceFromSchema();
     }
+    if (!precio || precio === 0) {
+      precio = this.extractPriceBruteForce(main);
+    }
+    if (!precio || precio === 0) {
+      precio = this.extractPriceBruteForce(document.body);
+    }
     return {
       nombre,
       descripcion: this.getFirstMatch(['[class*="description"]', '[class*="descripcion"]', '[itemprop="description"]'], (el) => el.textContent?.trim().slice(0, 500), main) || '',
@@ -506,6 +512,7 @@ class UniversalProductExtractor {
    */
   extractPriceFromPage(root = document.body) {
     const pricePatterns = [
+      /\$\s*(\d[\d.,\s]*)/g,
       /\$\s*([\d.,\s]+)/g,
       /(\d{1,3}(?:[.\s]\d{3})*(?:,\d+)?)\s*CLP/gi,
       /precio[:\s]*\$?\s*([\d.,\s]+)/gi,
@@ -544,6 +551,37 @@ class UniversalProductExtractor {
     if (prices.size === 0) return null;
     const sorted = [...prices].sort((a, b) => a - b);
     return sorted[0];
+  }
+
+  /** Escaneo agresivo: busca precio en cualquier elemento del área (para sitios con estructura no estándar) */
+  extractPriceBruteForce(root = document.body) {
+    const priceRegex = /\$\s*([\d.,\s]+)|^([\d]{2,8})$|([\d]{2,})\s*CLP/i;
+    const candidates = [];
+    const walk = (node) => {
+      if (!node || node.nodeType !== 1) return;
+      const el = node;
+      const txt = (el.textContent || '').trim();
+      if (txt && txt.length >= 2 && txt.length <= 25 && !/[\a-zA-Z]{4,}/.test(txt)) {
+        const m = txt.match(priceRegex);
+        if (m) {
+          const num = this.extractPrice(m[1] || m[2] || m[3]);
+          if (num && num >= 50 && num < 50000000) {
+            const isPriceLike = el.closest?.('[class*="price"], [class*="amount"]') || /\$/.test(txt);
+            candidates.push({ num, el, isPriceLike });
+          }
+        }
+      }
+      for (let i = 0; i < (el.childNodes?.length || 0); i++) {
+        walk(el.childNodes[i]);
+      }
+    };
+    walk(root);
+    if (candidates.length === 0) return null;
+    const withPriceClass = candidates.filter((c) => c.isPriceLike);
+    const inProduct = (withPriceClass.length ? withPriceClass : candidates).filter((c) =>
+      c.el.closest?.('.summary, .product-summary, .product, .single-product, [class*="product"]')
+    );
+    return (inProduct[0] || candidates[0])?.num ?? null;
   }
 
   /** Obtiene el primer precio válido en orden DOM (útil cuando el principal está antes que productos relacionados) */
