@@ -42,6 +42,11 @@ class UniversalProductExtractor {
         price: ['.summary .price bdi', '.summary .price .amount', '.price ins bdi', '.price ins .amount', '.price bdi', '.price .woocommerce-Price-amount', '.price .amount', 'p.price bdi', 'p.price', '.summary .price', '[itemprop="price"]'],
         image: ['.woocommerce-product-gallery img', '.product img', '[class*="gallery"] img', 'img.attachment-woocommerce_single'],
       },
+      'confiterialamundial.cl': {
+        title: ['h1', '.product_title', '[class*="product-title"]', '[class*="product-name"]', '.entry-title', 'h1.entry-title'],
+        price: ['.price ins bdi', '.price ins .amount', '.summary .price bdi', '.price bdi', '.price .woocommerce-Price-amount', '.price .amount', 'p.price', '[class*="price"] bdi', '[class*="price"] .amount'],
+        image: ['.woocommerce-product-gallery img', '.product img', '[class*="gallery"] img', 'img.attachment-woocommerce_single'],
+      },
     };
 
     const config = siteConfig[host];
@@ -463,6 +468,7 @@ class UniversalProductExtractor {
   extractPriceFromProductSummary(root = document.body) {
     const summarySelectors = ['.summary', '.product-summary', '.product .summary', '.woocommerce-product-details__short-description', '[class*="product-details"]', '.single-product .summary', '.product', '.product-details', '[class*="single-product"]'];
     const pricePatterns = [
+      /(?:~~)?\s*\$\s*([\d.,\s]+)\s*(?:~~)?\s*(?:\$\s*([\d.,\s]+))?/,
       /\$\s*([\d.,\s]+)/,
       /([\d]{1,3}(?:[.\s]\d{3})*(?:,\d+)?)\s*CLP/i,
       /precio[:\s]*\$?\s*([\d.,\s]+)/i,
@@ -477,7 +483,8 @@ class UniversalProductExtractor {
       for (const pattern of pricePatterns) {
         const match = text.match(pattern);
         if (match) {
-          const num = this.extractPrice(match[1] || match[0]);
+          const val = match[2] || match[1] || match[0];
+          const num = this.extractPrice(val);
           if (num && num > 0 && num < 50000000) return num;
         }
       }
@@ -514,6 +521,7 @@ class UniversalProductExtractor {
     const pricePatterns = [
       /\$\s*(\d[\d.,\s]*)/g,
       /\$\s*([\d.,\s]+)/g,
+      /(?:~~)?\s*\$\s*[\d.,\s]+\s*~~\s*\$\s*([\d.,\s]+)/g,
       /(\d{1,3}(?:[.\s]\d{3})*(?:,\d+)?)\s*CLP/gi,
       /precio[:\s]*\$?\s*([\d.,\s]+)/gi,
       /valor[:\s]*\$?\s*([\d.,\s]+)/gi,
@@ -555,7 +563,7 @@ class UniversalProductExtractor {
 
   /** Escaneo agresivo: busca precio en cualquier elemento del área (para sitios con estructura no estándar) */
   extractPriceBruteForce(root = document.body) {
-    const priceRegex = /\$\s*([\d.,\s]+)|^([\d]{2,8})$|([\d]{2,})\s*CLP/i;
+    const priceRegex = /(?:~~)?\s*\$\s*[\d.,\s]+\s*~~\s*\$\s*([\d.,\s]+)|\$\s*([\d.,\s]+)|^([\d]{2,8})$|([\d]{2,})\s*CLP/i;
     const candidates = [];
     const walk = (node) => {
       if (!node || node.nodeType !== 1) return;
@@ -564,7 +572,7 @@ class UniversalProductExtractor {
       if (txt && txt.length >= 2 && txt.length <= 25 && !/[\a-zA-Z]{4,}/.test(txt)) {
         const m = txt.match(priceRegex);
         if (m) {
-          const num = this.extractPrice(m[1] || m[2] || m[3]);
+          const num = this.extractPrice(m[1] || m[2] || m[3] || m[4]);
           if (num && num >= 50 && num < 50000000) {
             const isPriceLike = el.closest?.('[class*="price"], [class*="amount"]') || /\$/.test(txt);
             candidates.push({ num, el, isPriceLike });
