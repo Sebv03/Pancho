@@ -3,12 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Package, FileText } from "lucide-react";
+import { Package, FileText, ImageUp } from "lucide-react";
 import { ErrorBoundary } from "@/components/error-boundary";
 
 const navItems = [
   { href: "/dashboard/productos", label: "Productos", icon: Package },
   { href: "/dashboard/pdf", label: "Generar PDF", icon: FileText },
+  { href: "/dashboard/extraer-imagen", label: "Extraer de imagen", icon: ImageUp },
 ];
 
 export default function DashboardLayout({
