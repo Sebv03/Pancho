@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { FileDown, Plus, Trash2, RefreshCw } from "lucide-react";
+import { FileDown, Plus, Trash2, RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
 
 const STORAGE_KEY = "licitia_empresa_config";
@@ -38,7 +38,14 @@ export default function PdfPage() {
   const [diasEntrega, setDiasEntrega] = useState(2);
   const [validezDias, setValidezDias] = useState(20);
   const [generating, setGenerating] = useState(false);
+  const [busquedaProducto, setBusquedaProducto] = useState("");
   const { toast } = useToast();
+
+  const productosFiltrados = busquedaProducto.trim()
+    ? productos.filter((p) =>
+        p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase().trim())
+      )
+    : productos;
 
   const fetchProductos = async () => {
     try {
@@ -241,7 +248,7 @@ export default function PdfPage() {
                           }}
                         >
                           <option value="">Desde producto...</option>
-                          {productos.map((p) => (
+                          {productosFiltrados.map((p) => (
                             <option key={p.id} value={p.id}>
                               {p.nombre.slice(0, 35)}{p.nombre.length > 35 ? "…" : ""} — $ {(p.precio_venta ?? p.precio_capturado).toLocaleString("es-CL")}
                             </option>
@@ -292,6 +299,24 @@ export default function PdfPage() {
           {/* Agregar item: manual o desde producto */}
           <div className="rounded-lg border p-4 bg-muted/30 space-y-4">
             <p className="text-sm font-medium">Agregar item a la cotización</p>
+            {productos.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[200px] max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar producto por nombre..."
+                    value={busquedaProducto}
+                    onChange={(e) => setBusquedaProducto(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                {busquedaProducto && (
+                  <span className="text-xs text-muted-foreground">
+                    {productosFiltrados.length} de {productos.length} productos
+                  </span>
+                )}
+              </div>
+            )}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <div className="lg:col-span-2">
                 <Label className="text-xs text-muted-foreground">Seleccionar producto del catálogo</Label>
@@ -315,11 +340,17 @@ export default function PdfPage() {
                   disabled={loadingProductos}
                 >
                   <option value="">— Manual —</option>
-                  {productos.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre} — $ {(p.precio_venta ?? p.precio_capturado).toLocaleString("es-CL")}
+                  {productosFiltrados.length === 0 ? (
+                    <option value="" disabled>
+                      {busquedaProducto ? "Sin resultados. Intenta otra búsqueda." : "Cargando..."}
                     </option>
-                  ))}
+                  ) : (
+                    productosFiltrados.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre} — $ {(p.precio_venta ?? p.precio_capturado).toLocaleString("es-CL")}
+                      </option>
+                    ))
+                  )}
                 </select>
                 {loadingProductos && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
