@@ -574,6 +574,7 @@ class UniversalProductExtractor {
       for (let i = 0; i < (el.childNodes?.length || 0); i++) {
         walk(el.childNodes[i]);
       }
+      if (el.shadowRoot) walk(el.shadowRoot);
     };
     walk(root);
     if (candidates.length === 0) return null;
