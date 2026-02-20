@@ -26,9 +26,7 @@ interface ItemRow {
 }
 
 export default function PdfPage() {
-  const [items, setItems] = useState<ItemRow[]>([
-    { id: "1", descripcion: "", unidades: 1, precio_unitario: 0 },
-  ]);
+  const [items, setItems] = useState<ItemRow[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loadingProductos, setLoadingProductos] = useState(true);
   const [nuevoProductoId, setNuevoProductoId] = useState("");
@@ -95,7 +93,6 @@ export default function PdfPage() {
   };
 
   const removeItem = (id: string) => {
-    if (items.length <= 1) return;
     setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
@@ -234,7 +231,14 @@ export default function PdfPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, idx) => (
+                {items.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                      No hay items. Agrega productos desde el catálogo o manualmente abajo.
+                    </td>
+                  </tr>
+                ) : (
+                items.map((item, idx) => (
                   <tr key={item.id} className="border-t">
                     <td className="p-2">{idx + 1}</td>
                     <td className="p-2">
@@ -286,12 +290,13 @@ export default function PdfPage() {
                         : "—"}
                     </td>
                     <td className="p-2">
-                      <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} disabled={items.length <= 1} className="text-destructive hover:text-destructive">
+                      <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="text-destructive hover:text-destructive">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </td>
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
