@@ -86,6 +86,9 @@ class UniversalProductExtractor {
     if (!precio || precio === 0) {
       precio = this.extractPriceBruteForce(document.body);
     }
+    if (!precio || precio === 0) {
+      precio = this.extractPriceFromPage(document.body);
+    }
     return {
       nombre,
       descripcion: this.getFirstMatch(['[class*="description"]', '[class*="descripcion"]', '[itemprop="description"]'], (el) => el.textContent?.trim().slice(0, 500), main) || '',
@@ -411,6 +414,7 @@ class UniversalProductExtractor {
       '.single-product', '.product', '[class*="producto"]',
       '#product', '[class*="product-content"]',
       '.type-product', '.product.type-product',
+      '[class*="catalogo"]', '.product-details', '.product-info',
     ];
     for (const sel of mainSelectors) {
       const el = document.querySelector(sel);
@@ -502,7 +506,7 @@ class UniversalProductExtractor {
 
   extractPrice(priceString) {
     if (!priceString) return null;
-    let cleaned = String(priceString).replace(/\s/g, '').replace(/[^\d,.]/g, '');
+    let cleaned = String(priceString).replace(/\s/g, '').replace(/[\u00A0]/g, '').replace(/[^\d,.]/g, '');
     if (!cleaned) return null;
     if (cleaned.includes(',')) {
       cleaned = cleaned.replace(/\./g, '').replace(',', '.');
@@ -563,7 +567,7 @@ class UniversalProductExtractor {
 
   /** Escaneo agresivo: busca precio en cualquier elemento del área (para sitios con estructura no estándar) */
   extractPriceBruteForce(root = document.body) {
-    const priceRegex = /(?:~~)?\s*\$\s*[\d.,\s]+\s*~~\s*\$\s*([\d.,\s]+)|\$\s*([\d.,\s]+)|^([\d]{2,8})$|([\d]{2,})\s*CLP/i;
+    const priceRegex = /(?:~~)?\s*\$\s*[\d.,\s]+\s*~~\s*\$\s*([\d.,\s]+)|\$\s*([\d.,\s]+)|^([\d]{1,3}(?:\.\d{3})*(?:,\d+)?)$|^([\d]{2,8})$|([\d]{2,})\s*CLP/i;
     const candidates = [];
     const walk = (node) => {
       if (!node || node.nodeType !== 1) return;
@@ -572,7 +576,7 @@ class UniversalProductExtractor {
       if (txt && txt.length >= 2 && txt.length <= 25 && !/[\a-zA-Z]{4,}/.test(txt)) {
         const m = txt.match(priceRegex);
         if (m) {
-          const num = this.extractPrice(m[1] || m[2] || m[3] || m[4]);
+          const num = this.extractPrice(m[1] || m[2] || m[3] || m[4] || m[5]);
           if (num && num >= 50 && num < 50000000) {
             const isPriceLike = el.closest?.('[class*="price"], [class*="amount"]') || /\$/.test(txt);
             candidates.push({ num, el, isPriceLike });
@@ -700,10 +704,16 @@ class UIInjector {
     
     let productData = this.extractor.extract();
     
-    // Reintentar tras 1.5s si falló precio/imagen (SPA pueden cargar tarde)
-    if (productData && (!productData.precio || productData.precio === 0) && !productData.imagen) {
-      await new Promise(r => setTimeout(r, 1500));
-      productData = this.extractor.extract();
+    // Reintentar hasta 3 veces si el precio es 0 (contenido puede cargarse por JS)
+    for (let i = 0; i < 3; i++) {
+      if (productData && (!productData.precio || productData.precio === 0)) {
+        await new Promise(r => setTimeout(r, 1200));
+        const retry = this.extractor.extract();
+        if (retry) {
+          productData = { ...productData, ...retry };
+          if (retry.precio > 0) break;
+        }
+      } else break;
     }
     
     if (!productData) {
