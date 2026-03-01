@@ -63,9 +63,10 @@ export async function parsearExcelProductos(file: File): Promise<ProductoExcelRo
         const rows = XLSX.utils.sheet_to_json<ProductoExcelRow>(firstSheet, { defval: "" });
 
         const validos = rows.filter((r) => {
-          const nombre = String((r as Record<string, unknown>)?.Nombre ?? "").trim();
-          const precioCap = parsePrecio((r as Record<string, unknown>)?.["Precio capturado"]);
-          const precioVta = parsePrecio((r as Record<string, unknown>)?.["Precio Venta"]);
+          const row = r as unknown as Record<string, unknown>;
+          const nombre = String(row?.Nombre ?? "").trim();
+          const precioCap = parsePrecio(row?.["Precio capturado"]);
+          const precioVta = parsePrecio(row?.["Precio Venta"]);
           const precio = precioCap ?? precioVta ?? 0;
           return nombre.length > 0 && precio >= 0;
         });
@@ -81,7 +82,7 @@ export async function parsearExcelProductos(file: File): Promise<ProductoExcelRo
 }
 
 export function excelRowToProductoPayload(row: ProductoExcelRow | Record<string, unknown>) {
-  const r = row as Record<string, unknown>;
+  const r = row as unknown as Record<string, unknown>;
   const nombre = String(r?.Nombre ?? "").trim();
   const precioCapturado = parsePrecio(r?.["Precio capturado"]) ?? parsePrecio(r?.["Precio Venta"]) ?? 0;
   const precioVenta = parsePrecio(r?.["Precio Venta"]);
