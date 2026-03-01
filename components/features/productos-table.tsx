@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Producto } from "@/types";
 import { ExternalLink, Pencil, Trash2, Plus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ProductoFormDialog, ProductoFormData } from "./producto-form-dialog";
 
 interface ProductosTableProps {
@@ -30,6 +31,7 @@ interface ProductosTableProps {
   onCreate: (data: ProductoFormData) => Promise<void>;
   onUpdate: (id: string, data: ProductoFormData) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onDeleteMany?: (ids: string[]) => Promise<void>;
 }
 
 export function ProductosTable({
@@ -38,6 +40,7 @@ export function ProductosTable({
   onCreate,
   onUpdate,
   onDelete,
+  onDeleteMany,
 }: ProductosTableProps) {
   const [filteredData, setFilteredData] = React.useState(productos);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -45,6 +48,8 @@ export function ProductosTable({
   const [formOpen, setFormOpen] = React.useState(false);
   const [editingProducto, setEditingProducto] = React.useState<Producto | null>(null);
   const [deleteProducto, setDeleteProducto] = React.useState<Producto | null>(null);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
@@ -104,6 +109,44 @@ export function ProductosTable({
     onRefresh();
   };
 
+  const allSelected = filteredData.length > 0 && filteredData.every((p) => selectedIds.has(p.id));
+  const someSelectedInFiltered = filteredData.some((p) => selectedIds.has(p.id)) && !allSelected;
+  const someSelected = selectedIds.size > 0;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filteredData.forEach((p) => next.delete(p.id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filteredData.forEach((p) => next.add(p.id));
+        return next;
+      });
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (!onDeleteMany || selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    await onDeleteMany(ids);
+    setSelectedIds(new Set());
+    setBulkDeleteOpen(false);
+    onRefresh();
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -114,10 +157,22 @@ export function ProductosTable({
               Catálogo de productos capturados desde e-commerce. Total: {filteredData.length}. Formato Excel: Imagen, Nombre, Sitio, Precio capturado, Precio Venta.
             </CardDescription>
           </div>
-          <Button onClick={handleAdd}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo producto
-          </Button>
+          <div className="flex items-center gap-2">
+            {someSelected && onDeleteMany && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar seleccionados ({selectedIds.size})
+              </Button>
+            )}
+            <Button onClick={handleAdd}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo producto
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -146,6 +201,15 @@ export function ProductosTable({
           <Table>
             <TableHeader>
               <TableRow>
+                {onDeleteMany && (
+                  <TableHead className="w-[48px]">
+                    <Checkbox
+                      checked={allSelected ? true : someSelectedInFiltered ? "indeterminate" : false}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Seleccionar todos"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="w-[60px]">Imagen</TableHead>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Sitio</TableHead>
@@ -157,13 +221,22 @@ export function ProductosTable({
             <TableBody>
               {filteredData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={onDeleteMany ? 7 : 6} className="text-center py-12 text-muted-foreground">
                     No hay productos. Usa la extensión Chrome para capturar o agrega uno manualmente.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredData.map((producto) => (
                   <TableRow key={producto.id}>
+                    {onDeleteMany && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(producto.id)}
+                          onCheckedChange={() => toggleSelect(producto.id)}
+                          aria-label={`Seleccionar ${producto.nombre}`}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>
                       {producto.imagen_url ? (
                         <img
@@ -260,6 +333,30 @@ export function ProductosTable({
               onClick={handleConfirmDelete}
             >
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      )}
+
+      {mounted && (
+      <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Eliminar productos seleccionados?</DialogTitle>
+            <DialogDescription>
+              Se eliminarán {selectedIds.size} producto(s). Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+            >
+              Eliminar {selectedIds.size} producto(s)
             </Button>
           </DialogFooter>
         </DialogContent>

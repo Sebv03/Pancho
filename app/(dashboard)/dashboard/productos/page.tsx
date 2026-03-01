@@ -115,6 +115,28 @@ export default function ProductosPage() {
     }
   };
 
+  const handleDeleteMany = async (ids: string[]) => {
+    let eliminados = 0;
+    let errores = 0;
+    for (const id of ids) {
+      const response = await fetch(`/api/productos/${id}`, { method: "DELETE" });
+      if (response.ok) eliminados++;
+      else errores++;
+    }
+    if (errores > 0) {
+      toast({
+        title: "Eliminación parcial",
+        description: `${eliminados} eliminados, ${errores} con error.`,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Productos eliminados",
+        description: `${eliminados} producto(s) eliminado(s) correctamente.`,
+      });
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const res = await fetch("/api/productos?limit=5000");
@@ -269,6 +291,7 @@ export default function ProductosPage() {
           onCreate={handleCreate}
           onUpdate={handleUpdate}
           onDelete={handleDelete}
+          onDeleteMany={handleDeleteMany}
         />
       )}
     </div>
